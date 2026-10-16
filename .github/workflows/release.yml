@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Verify source version and bundled helpers
+        shell: pwsh
+        run: |
+          $project = [xml](Get-Content WindowsDesktopMover.csproj -Raw)
+          $version = $project.SelectSingleNode('/Project/PropertyGroup/VersionPrefix').InnerText
+          if ($version -notmatch '^\d+\.\d+\.\d+$' -or $env:GITHUB_REF_NAME -ne "v$version") {
+            throw 'The release tag must match the source version.'
+          }
+          $manifest = [xml](Get-Content app.manifest -Raw)
+          if ($manifest.assembly.assemblyIdentity.version -ne "$version.0") {
+            throw 'The manifest must match the source version.'
+          }
+          $expected = @{
+            'native/win11-23h2/VirtualDesktopAccessor.dll' = 'F78FF6334F6C0EF5175EC0819026CEC31D421A564B9ED1EE1AC4B6ED98D4F999'
+            'native/win11-24h2/VirtualDesktopAccessor.dll' = '8740C572A1C000E3B87FFEB1E4C397EAE9AF3BD4A2ABDC3BCFFACAB4493F8FF5'
+          }
+          foreach ($file in $expected.Keys) {
+            if ((Get-FileHash $file -Algorithm SHA256).Hash -ne $expected[$file]) {
+              throw "Checksum mismatch: $file"
+            }
+          }
+      - name: Build standalone executable
+        shell: cmd
+        run: build.bat
+      - name: Verify executable version and prepare checksum
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          $info = (Get-Item WindowsDesktopMover.exe).VersionInfo
+          if ($info.FileVersion -ne "$version.0" -or ($info.ProductVersion -split '\+')[0] -ne $version) {
+            throw 'The executable version must match the release tag.'
+          }
+          $hash = (Get-FileHash WindowsDesktopMover.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText((Join-Path $PWD 'SHA256SUMS.txt'), "$hash  WindowsDesktopMover.exe" + [char]10, [Text.UTF8Encoding]::new($false))
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME WindowsDesktopMover.exe SHA256SUMS.txt --verify-tag --generate-notes --draft --title "Windows Desktop Mover $env:GITHUB_REF_NAME" --repo "$env:GITHUB_REPOSITORY"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create the draft release and upload assets.' }
+          gh release edit $env:GITHUB_REF_NAME --draft=false --latest --repo "$env:GITHUB_REPOSITORY"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not publish the release.' }

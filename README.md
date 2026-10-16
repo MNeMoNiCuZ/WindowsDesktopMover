@@ -8,6 +8,8 @@ Open `WindowsDesktopMover.exe` in the project root after building. It runs in th
 
 Choose **Color** in the tray menu to select Orange, Azure, Cyan teal, Emerald, Violet, Periwinkle, Coral, Magenta, Amber or Silver. Silver is the default. The tray icon changes immediately, and your choice is saved between launches.
 
+The tray menu follows the Windows app light or dark theme, including changes while the app is running. If Windows does not provide a recognized preference, the menu uses dark gray. Windows high-contrast colors take precedence when enabled.
+
 Enable **Start with Windows** in the tray menu to launch Desktop Mover automatically when you sign in. It is off by default, applies only to your Windows account, and requires no administrator rights. Turning it off removes the app's startup registration. If you move the executable, enable the option again from its new location to update the registration.
 
 | Shortcut | Action |
@@ -60,6 +62,12 @@ Get-Content .\smoke-test.txt
 ```
 
 The test briefly focuses its own test window and sends the shortcut. It moves only its test windows, but creates and removes temporary desktops. Use `--desktop-api-test` instead of `--smoke-test` to skip simulated keyboard input. Exit code 0 means success. The report is written alongside the executable, so run the test from a writable folder.
+
+## Releases
+
+After committing changes, run `powershell -ExecutionPolicy Bypass -File .\release.ps1` to increment the patch version, commit the version files, and push the branch and release tag together. Use `-Bump Minor` or `-Bump Major` when appropriate. Use `-WhatIf` to preview the next version, or `-PrepareOnly` to update the version files for inclusion in your own commit.
+
+The version is recorded in `WindowsDesktopMover.csproj` and `app.manifest` and embedded in the executable. Pushing the matching `v*` tag starts GitHub Actions, which checks the versions, builds the standalone executable, and publishes it with a SHA-256 checksum. The executable filename remains `WindowsDesktopMover.exe`.
 
 ## Third-party dependency
 

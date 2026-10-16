@@ -41,7 +41,7 @@ internal sealed class TrayContext : ApplicationContext
         closeEmpty.CheckedChanged += (_, _) => SaveSettings();
         startWithWindows = new ToolStripMenuItem("Start with Windows");
         startWithWindows.Click += (_, _) => ToggleStartWithWindows();
-        menu = new ContextMenuStrip();
+        menu = new ModernContextMenuStrip();
         menu.Items.Add(new ToolStripMenuItem("Desktop Mover") { Enabled = false });
         menu.Items.Add(new ToolStripSeparator());
         colorMenu = new ToolStripMenuItem("Color");
