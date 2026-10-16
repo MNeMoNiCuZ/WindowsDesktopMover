@@ -1,0 +1,13 @@
+bin/
+obj/
+dist/
+*.user
+WindowsDesktopMover.exe
+
+# Local artwork drafts and scratch files
+/.art-prompts/
+/assets/icon-exploration/
+
+# Local IDE state and integration-test reports
+/.vs/
+/smoke-test.txt
